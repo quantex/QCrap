@@ -1,3 +1,5 @@
+import numpy as np
+
 def getCd(j,m):
     '''
     Lowering ladder coefficient, SQUARED!
