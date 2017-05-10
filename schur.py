@@ -1,11 +1,14 @@
 import numpy as np
+from numba import jit, prange
 
+@jit(nopython=True)
 def getCd(j,m):
     '''
     Lowering ladder coefficient, SQUARED!
     '''
     return j*(j+1)-m*(m-1)
 
+@jit(nopython=True)
 def getCu(j,m):
     '''
     Lifting ladder coefficient, SQUARED!
