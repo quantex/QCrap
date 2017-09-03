@@ -74,3 +74,36 @@ def fuse(j1,j2):
         out_idx = out_idx + 1
         j = j - 1
     return output
+
+
+def getBlocks(primitive,jmax,jmin):
+    '''
+    Takes a block of primitives from fuse().
+    Returns a dictionary of blocks indexed by "j,j1,j2".
+    '''
+    # Number of blocks
+    ctBlk = int(jmax-jmin+1)
+    output = {idx_blk+jmin:np.array([]) for idx_blk in range(ctBlk)}
+    
+    idx = 0
+    for idx_blk in range(ctBlk):
+        j = (jmax-idx_blk)
+        ct = int(2*j+1)
+        output[j] = np.flip(primitive[idx:idx+ct],axis=0)
+        idx = idx + ct
+    return output
+
+
+def generateCGseries(j_unit,copies):
+    '''
+    Given a basic unit of spin J, generate the
+    Clebsch-Gordan series required for Schur transform.
+    Returned dictionary is indexed as follows:
+    [1st input J][Total output J given the 1st input J and j_unit]
+    '''
+    output = {n*j_unit:{} for n in range(1,copies)}
+    for n in range(1,copies):
+        idx = n*j_unit
+        primitive = fuse(n*j_unit,j_unit)
+        output[idx] = getBlocks(primitive,j_unit+idx,idx-j_unit)
+    return output
