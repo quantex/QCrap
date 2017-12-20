@@ -107,3 +107,68 @@ def generateCGseries(j_unit,copies):
         primitive = fuse(n*j_unit,j_unit)
         output[idx] = getBlocks(primitive,j_unit+idx,idx-j_unit)
     return output
+
+
+def tileDiag(mat,n):
+    '''
+    Takes a matrix mat, and tiles it n-times
+    into a block diagonal matrix.
+    '''
+    height = mat.shape[0]
+    width = mat.shape[1]
+    output = np.zeros((n*height,n*width))
+    for idx in range(n):
+        output[idx*height:(idx+1)*height,idx*width:(idx+1)*width] = mat
+    return output
+
+
+def buildJtransorms(j_unit,copies):
+    '''
+    Could blow up!!!
+
+    When it doesn't blow up, return set of unitary transformations
+    between computational basis states and subspaces of definite J's.
+    '''
+    cgSeries = generateCGseries(j_unit,copies)
+    # print(cgSeries)
+    ops = []
+    j_track = []
+    for entry in cgSeries[j_unit]:
+        op = cgSeries[j_unit][entry]
+        shape = op.shape
+        ops.append(op.reshape(int(2*entry+1),-1))
+        j_track.append(entry)
+        
+    for idx2 in range(copies-2):
+        newOps = []
+        newJ = []
+        for idx in range(len(j_track)):
+            shape = ops[idx].shape
+            targ = tileDiag(ops[idx],int(2*j_unit+1))
+            # print("Input J: ",j_track[idx],"; Target op:\n",targ)
+            if j_track[idx]<0.5:
+                newOps.append(targ)
+                newJ.append(j_unit)
+            else:
+                for entry in cgSeries[j_track[idx]]:
+                    newOp = np.transpose(cgSeries[j_track[idx]][entry],axes=(0,2,1))
+                    newOp = newOp.reshape(int(2*entry+1),-1)
+                    # print("    Output J: ", entry, "; New op:\n", newOp)
+                    newOp = np.dot(newOp,targ)
+                    newOps.append(newOp)
+                    newJ.append(entry)
+        ops = newOps
+        j_track = newJ
+    
+    return ops,j_track
+
+def buildFullMat(j_unit,copies):
+    '''
+    Assemble J-definite transformations from above into a single
+    CG-tranformation unitary matrix.
+    '''
+    ops,js = buildJtransorms(j_unit,copies)
+    sort_args = np.argsort(js)
+    ops_sorted = np.take(ops,sort_args)
+    opFull = np.vstack(ops_sorted)
+    return opFull
