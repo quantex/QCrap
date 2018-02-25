@@ -172,3 +172,47 @@ def buildFullMat(j_unit,copies):
     ops_sorted = np.take(ops,sort_args)
     opFull = np.vstack(ops_sorted)
     return opFull
+
+
+# ============================================= #
+# >>> Data compression circuit construction <<< #
+# ============================================= #
+
+def genCompression(circ):
+    '''
+    Given a QISkit circuit, tack on a 3-qubit data-compression sequence.
+    '''
+    alpha = np.arccos(1/np.sqrt(3))
+
+    # Add U-1/2
+    circ.cnot(1,0)
+    circ.cnot(0,1)
+    circ.ry(-np.pi/4,1)
+    circ.cnot(0,1)
+    circ.ry(np.pi/4,1)
+
+    # Add U-1 and U-0
+    # Basis re-arrangement (qb0 is LSB, qb2 is MSB)
+    circ.x(1)
+    circ.x(2)
+    circ.ccx(1,2,0)
+    circ.x(2)
+    circ.ccx(0,1,2)
+    circ.x(1)
+    circ.cnot(2,0)
+    circ.ccx(0,2,1)
+    circ.cnot(1,0)
+
+    # Do W-block
+    circ.ccx(0,1,2)
+    circ.ry(2*alpha-np.pi/2,2)
+    circ.ccx(0,1,2)
+    circ.ry(np.pi/2-2*alpha,2)
+
+    # Do V-block
+    circ.cnot(1,2)
+    circ.ry(-alpha,2)
+    circ.cnot(1,2)
+    circ.ry(alpha,2)
+
+    return circ
