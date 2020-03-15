@@ -216,3 +216,65 @@ def genCompression(circ):
     circ.ry(alpha,2)
 
     return circ
+
+
+# ============================================== #
+# >>> Specht modules and irreps of Sym-group <<< #
+# ============================================== #
+# @jit(nopython=True)
+def getShapes(n,d):
+    '''
+    For n copies of a d-level system, compute all shapes and multiplicities.
+    Returns a Dict of np.arrays. Zeroth entry of each np.array is multiplicity.
+    Rest of the np.array is a partitioning of n in weakly descending order.
+
+    Numba's typed Dict instantiation seems problematic here.
+    That's why njit-related items are commented out. Calls to 'prange' are also
+    replaced with the normal Pythonic 'range'.
+    '''
+#     currentShape = Dict.empty(key_type=types.unicode_type,
+#                               value_type=types.int64[:])
+    initVal = np.zeros(d-1,dtype=np.int64)
+    initVal = np.concatenate( (np.array([1,1],dtype=np.int64),initVal) )
+    initKey = str(initVal[1:])
+    currentShape = {initKey:initVal}
+    
+    for idx in range(n-1):
+#         newShape = Dict.empty(key_type=types.unicode_type,
+#                               value_type=types.int64[:])
+        newShape = {}
+        for key in currentShape:
+            arrDiff = np.empty(d-1,dtype=np.int_)
+            entry = currentShape[key]
+            for idx2 in range(d-1):
+                arrDiff[idx2] = entry[idx2+1] - entry[idx2+2]
+            
+            nonzeros = np.nonzero(arrDiff)[0]
+            insertions = np.concatenate((np.array([-1]),nonzeros))
+            
+            for idx2 in range(len(insertions)):
+                newArr = entry.copy()
+                newArr[insertions[idx2] + 2] += 1
+                newKey = str(newArr[1:])
+                try:
+                    newShape[newKey][0] += entry[0]
+                except:
+                    newShape.update({newKey:newArr})
+        currentShape = newShape
+        
+    return currentShape
+
+
+@jit(nopython=True)
+def getDim(part):
+    '''
+    Given a shape-array (as returned by getShapes above), compute the
+    dimensionality of the vector-space spanned by the irrep.
+    '''
+    d = len(part)-1
+    tot = 1
+    for i in prange(1,d):
+        for j in range(i+1,d+1):
+            tot *= (part[i]-i+j-part[j])/(d+1-j)
+
+    return tot
