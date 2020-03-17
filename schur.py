@@ -278,3 +278,66 @@ def getDim(part):
             tot *= (part[i]-i+j-part[j])/(d+1-j)
 
     return tot
+
+
+#===========================#
+# >>> Convenience funcs <<< #
+#===========================#
+def additiveKron(op,dim,n,onlist,op2=[]):
+    '''
+    Build a symmetrized sum of tensor-product terms of op.
+    Args:
+        op: (Mat) For each summand, insert op where index is listed in onlist
+        op2:(Mat) When NOT listed in onlist, insert op2 instead.
+        dim:(Int) Dimension of each operand.
+        n:  (Int) Number of multiplicand in each tensor-product term.
+    Returns:
+        Matrix of size dim^n.
+    '''
+    if len(op2)==0:
+        op2 = np.eye(dim,dtype=np.int_)/dim
+
+    out = np.zeros((dim**n,dim**n),dtype=np.complex128)
+    
+    for entry in onlist:
+        temp = np.array([1])
+        for idx in range(n):
+            if not (idx in entry):
+                temp = np.kron(temp,op2)
+            else:
+                temp = np.kron(temp,op)
+        out += temp
+    
+    return out
+
+def genOnList(n,m):
+    '''
+    Support func for additiveKron above.
+
+    Generates a nCm dimensional list
+    of m-dimensional lists, enumerating
+    all n-choose-m sets.
+    
+    Could blow up!!!
+    '''
+    dim = int(sps.binom(n,m))
+    out = np.zeros((dim,m),dtype=np.int_)
+    
+    out[0] = np.arange(m,dtype=np.int_)
+    for idx in range(1,dim):
+        out[idx] = out[idx-1]
+        for idx2 in range(m):
+            limUp = 0
+            if idx2==0:
+                limUp = n-1
+            else:
+                limUp = out[idx][m-idx2]-1
+                
+            if not (out[idx][m-idx2-1]==limUp):
+                out[idx][m-idx2-1] += 1
+                limDown = out[idx][m-idx2-1]+1
+                temp = np.arange(limDown,limDown+idx2,dtype=np.int_)
+                out[idx][m-idx2:] = temp
+                break
+    
+    return out
